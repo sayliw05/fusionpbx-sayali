@@ -394,6 +394,7 @@
 	//if ($_GET["step"] == "" || $_GET["step"] == "1") {
 	//	$content = $view->render('language.htm');
 	//}
+	$content = '';
 
 	if ($_REQUEST["step"] == "1") {
 		$content = $view->render('configuration.htm');
