@@ -12,6 +12,9 @@
 require_once dirname(__DIR__, 2) . "/resources/require.php";
 require_once "resources/check_auth.php";
 
+//start output buffering to catch any unexpected output
+ob_start();
+
 //set response headers
 header('Content-Type: application/json');
 header('Cache-Control: no-cache, must-revalidate');
@@ -231,7 +234,12 @@ if ($enabled != 'true' && !empty($_SESSION['switch']['sip_profiles']['dir'])) {
 }
 
 //synchronize configuration
-save_gateway_xml();
+try {
+	save_gateway_xml();
+} catch (Exception $e) {
+	error_log("Error in save_gateway_xml(): " . $e->getMessage());
+	// Continue anyway - the gateway is saved in the database
+}
 
 //clear the cache
 $esl = event_socket::create();
@@ -248,6 +256,8 @@ usleep(1000);
 $_SESSION["reload_xml"] = false;
 
 //return success response
+// Discard any buffered output and ensure clean JSON output
+ob_end_clean();
 echo json_encode([
 	'success' => true,
 	'action' => $action,
@@ -259,6 +269,7 @@ echo json_encode([
 		'enabled' => $enabled
 	]
 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+exit;
 
 ?>
 
