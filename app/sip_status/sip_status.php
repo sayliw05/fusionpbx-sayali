@@ -80,14 +80,23 @@
 	unset($sql, $parameters, $rows, $row);
 
 //get status
+	$xml = null;
 	try {
 		$cmd = "sofia xmlstatus";
 		$xml_response = trim(event_socket::api($cmd));
-		if ($xml_response) {
-			//read the xml string into an xml object
-			$xml = new SimpleXMLElement($xml_response);
+		if ($xml_response && strlen($xml_response) > 0) {
+			//sanitize the XML response
+			if (function_exists('iconv')) { $xml_response = iconv("utf-8", "utf-8//IGNORE", $xml_response); }
+			$xml_response = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $xml_response);
+			//check if response looks like XML
+			if (strpos($xml_response, '<?xml') !== false || strpos($xml_response, '<') !== false) {
+				//read the xml string into an xml object
+				$xml = new SimpleXMLElement($xml_response);
+			}
+		}
 
-			//sort the SIP profiles alphabetically
+		//sort the SIP profiles alphabetically
+		if (!empty($xml)) {
 			//turn into array
 			$profiles_array = array();
 			foreach($xml->profile as $profile) {
@@ -107,6 +116,10 @@
 			}
 			$xml_string .= "</profiles>";
 
+			//sanitize the XML string
+			if (function_exists('iconv')) { $xml_string = iconv("utf-8", "utf-8//IGNORE", $xml_string); }
+			$xml_string = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $xml_string);
+			
 			//read the xml string into a new xml object
 			$xml = simplexml_load_string($xml_string);
 		}
@@ -115,11 +128,18 @@
 		$message = $e->getMessage();
 		message::add($message, 'negative', 5000);
 	}
+	$xml_gateways = null;
 	try {
 		$cmd = "sofia xmlstatus gateway";
 		$xml_response = trim(event_socket::api($cmd));
-		if ($xml_response) {
-			$xml_gateways = new SimpleXMLElement($xml_response);
+		if ($xml_response && strlen($xml_response) > 0) {
+			//sanitize the XML response
+			if (function_exists('iconv')) { $xml_response = iconv("utf-8", "utf-8//IGNORE", $xml_response); }
+			$xml_response = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $xml_response);
+			//check if response looks like XML
+			if (strpos($xml_response, '<?xml') !== false || strpos($xml_response, '<') !== false) {
+				$xml_gateways = new SimpleXMLElement($xml_response);
+			}
 		}
 	}
 	catch(Exception $e) {
@@ -262,11 +282,18 @@
 			}
 			$xml_response = str_replace("<profile-info>", "<profile_info>", $xml_response);
 			$xml_response = str_replace("</profile-info>", "</profile_info>", $xml_response);
+			
+			//sanitize the XML response
+			if (function_exists('iconv')) { $xml_response = iconv("utf-8", "utf-8//IGNORE", $xml_response); }
+			$xml_response = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $xml_response);
+			
 			try {
 				$xml = new SimpleXMLElement($xml_response);
 			}
 			catch(Exception $e) {
-				echo $e->getMessage();
+				// Log the error but don't stop execution
+				error_log("SIP Status XML Parse Error for profile $sip_profile_name: " . $e->getMessage());
+				$xml = null;
 			}
 
 			echo "<div class='action_bar sub'>\n";
