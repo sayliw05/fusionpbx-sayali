@@ -162,7 +162,21 @@ if ($method == 'GET') {
 	
 	//get query parameters
 	$search = !empty($_GET["search"]) ? trim($_GET["search"]) : '';
-	$show = !empty($_GET["show"]) ? trim($_GET["show"]) : '';
+	$domain_uuid_param = !empty($_GET["domain_uuid"]) ? trim($_GET["domain_uuid"]) : '';
+	$domain_name_param = !empty($_GET["domain_name"]) ? trim($_GET["domain_name"]) : '';
+	
+	//if domain_name is provided, look up domain_uuid
+	$filter_domain_uuid = null;
+	if (!empty($domain_uuid_param) && is_uuid($domain_uuid_param)) {
+		$filter_domain_uuid = $domain_uuid_param;
+	} elseif (!empty($domain_name_param)) {
+		//look up domain_uuid from domain_name
+		$sql_domain = "SELECT domain_uuid FROM v_domains WHERE domain_name = :domain_name AND domain_enabled = 'true' LIMIT 1";
+		$parameters_domain = ['domain_name' => $domain_name_param];
+		$database = new database;
+		$filter_domain_uuid = $database->select($sql_domain, $parameters_domain, 'column');
+		unset($sql_domain, $parameters_domain);
+	}
 	
 	//if single gateway requested
 	if (!empty($gateway_id) && is_uuid($gateway_id)) {
@@ -243,14 +257,31 @@ if ($method == 'GET') {
 	$sql .= "FROM v_gateways ";
 	$sql .= "WHERE true ";
 	
-	//apply domain filter if user doesn't have gateway_all permission
-	if (!($show == "all" && permission_exists('gateway_all'))) {
+	//determine which domain_uuid to use for filtering
+	$domain_uuid_to_filter = null;
+	if (!empty($filter_domain_uuid)) {
+		//use explicitly provided domain_uuid (from domain_uuid or domain_name parameter)
+		//only allow if it matches their session domain
+		if ($filter_domain_uuid == $_SESSION['domain_uuid']) {
+			$domain_uuid_to_filter = $filter_domain_uuid;
+		} else {
+			//user doesn't have permission to view other domains, use session domain
+			$domain_uuid_to_filter = $_SESSION['domain_uuid'];
+		}
+	} else {
+		//use session domain_uuid (default behavior)
+		$domain_uuid_to_filter = $_SESSION['domain_uuid'];
+	}
+	
+	//apply domain filter
+	if (!empty($domain_uuid_to_filter)) {
 		$sql .= "AND (domain_uuid = :domain_uuid ";
 		if (permission_exists('gateway_domain')) {
 			$sql .= "OR domain_uuid IS NULL ";
 		}
 		$sql .= ") ";
 		$parameters['domain_uuid'] = $_SESSION['domain_uuid'];
+		//$parameters['domain_uuid'] = $domain_uuid_to_filter;
 	}
 	
 	//apply search filter
@@ -321,7 +352,8 @@ if ($method == 'GET') {
 	//add metadata
 	$response['metadata'] = [
 		'timestamp' => date('c'),
-		'domain_uuid' => $_SESSION['domain_uuid'] ?? null,
+		'domain_uuid' => $domain_uuid_to_filter ?? $_SESSION['domain_uuid'] ?? null,
+		'domain_name' => $domain_name_param ?? null,
 		'esl_connected' => $esl_connected
 	];
 	
