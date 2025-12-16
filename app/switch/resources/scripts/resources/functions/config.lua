@@ -59,9 +59,9 @@ function load_config()
 			if (k == "database.0.backend.base64")   then database.system.backend.base64 = v; end
 
 			--database switch settings
-			if (k == "database.1.type")             then database.switch.type = v; end
-			if (k == "database.1.path")             then database.switch.path = v; end
-			if (k == "database.1.name")             then database.switch.name = v; end
+			if (k == "database.1.type")             then database.switch.type = v; freeswitch.consoleLog("notice", "[config] database.switch.type = " .. tostring(v) .. "\n"); end
+			if (k == "database.1.path")             then database.switch.path = v; freeswitch.consoleLog("notice", "[config] database.switch.path = " .. tostring(v) .. "\n"); end
+			if (k == "database.1.name")             then database.switch.name = v; freeswitch.consoleLog("notice", "[config] database.switch.name = " .. tostring(v) .. "\n"); end
 			if (k == "database.1.host")             then database.switch.host = v; end
 			if (k == "database.1.hostaddr")         then database.switch.hostaddr = v; end
 			if (k == "database.1.port")             then database.switch.port = v; end
@@ -143,6 +143,9 @@ function load_config()
 
 	--database switch dsn
 	switch_dsn = {}
+	freeswitch.consoleLog("notice", "[config] database.switch.type = " .. tostring(database.switch.type) .. "\n");
+	freeswitch.consoleLog("notice", "[config] database.switch.path = " .. tostring(database.switch.path) .. "\n");
+	freeswitch.consoleLog("notice", "[config] database.switch.name = " .. tostring(database.switch.name) .. "\n");
 	if (database.switch.type == 'pgsql') then
 		--create the switch_dsn array
 		table.insert(switch_dsn, [[pgsql://]]);
@@ -163,9 +166,20 @@ function load_config()
 		database.switch = table.concat(switch_dsn, '');
 	elseif (database.switch.type == 'sqlite') then
 		--create the switch_dsn array
+		freeswitch.consoleLog("notice", "[config] Building SQLite DSN: path=" .. tostring(database.switch.path) .. ", name=" .. tostring(database.switch.name) .. "\n");
 		table.insert(switch_dsn, [[sqlite://]] .. database.switch.path .. [[/]].. database.switch.name ..[[ ]]);
+		database.switch = table.concat(switch_dsn, '');
+		freeswitch.consoleLog("notice", "[config] database.switch DSN = " .. tostring(database.switch) .. "\n");
+	else
+		--fallback: if type is not set, default to sqlite
+		if (database.switch.path and database.switch.name) then
+			table.insert(switch_dsn, [[sqlite://]] .. database.switch.path .. [[/]].. database.switch.name ..[[ ]]);
+			database.switch = table.concat(switch_dsn, '');
+		end
 	end
-	database.switch = table.concat(switch_dsn, '');
+	if (database.switch == nil or database.switch == '') then
+		database.switch = table.concat(switch_dsn, '');
+	end
 
 	--event socket settings
 	if (event_socket_host == nil) then
