@@ -20,7 +20,7 @@ function FsDatabase.new(name)
   local dbh = assert(name)
   if (type(name) == 'string') then
     --debug information
-  	--freeswitch.consoleLog("notice","name " .. name .. "\n");
+  	freeswitch.consoleLog("notice", "[native.lua] Database.new called with name: " .. tostring(name) .. "\n");
   	--freeswitch.consoleLog("notice","database.type " .. database.type .. "\n");
   	--freeswitch.consoleLog("notice","database.name " .. database.name .. "\n");
   	--freeswitch.consoleLog("notice","database.path " .. database.path .. "\n");
@@ -28,11 +28,23 @@ function FsDatabase.new(name)
   	--handle switch sqlite
     if (name == 'switch' and database.type == 'sqlite' and database.path ~= nil and database.name ~= nil) then
       dbh = freeswitch.Dbh("sqlite://"..trim(database.path).."/"..trim(database.name))
+      freeswitch.consoleLog("notice", "[native.lua] Created SQLite connection for switch database\n");
     else
       dbh = database_handle(name)
+      freeswitch.consoleLog("notice", "[native.lua] Got database handle from database_handle(" .. tostring(name) .. ")\n");
+    end
+    if (dbh) then
+      freeswitch.consoleLog("notice", "[native.lua] Database handle exists, checking connection...\n");
+      if (not dbh:connected()) then
+        freeswitch.consoleLog("err", "[native.lua] Database handle is NOT connected!\n");
+      else
+        freeswitch.consoleLog("notice", "[native.lua] Database handle IS connected\n");
+      end
+    else
+      freeswitch.consoleLog("err", "[native.lua] Database handle is nil!\n");
     end
   end
-  assert(dbh:connected())
+  assert(dbh:connected(), "Database connection failed for: " .. tostring(name))
 
   local self = setmetatable({
     _dbh = dbh;
