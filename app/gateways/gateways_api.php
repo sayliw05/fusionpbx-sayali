@@ -111,6 +111,29 @@ if ($method == 'POST' && !empty($action)) {
 				exit;
 			}
 			
+			// Create event socket connection (matching gateways.php logic)
+			$esl = event_socket::create();
+			if (!$esl || !$esl->is_connected()) {
+				http_response_code(503);
+				echo json_encode(['error' => 'Service Unavailable', 'message' => 'Event Socket connection failed. Cannot start gateways.']);
+				exit;
+			}
+			
+			// The gateways class start() method requires a CSRF token
+			// Token validation uses $_SERVER['PHP_SELF'] as the key
+			// IMPORTANT: token->validate() sanitizes with preg_replace('[^a-zA-Z0-9]', '', $key)
+			// But token->create() sanitizes with preg_replace('[^a-zA-Z0-9\-_@.\/]', '', $key) which keeps slashes
+			// To ensure keys match, we must sanitize the same way validate() does BEFORE creating
+			$token_key = preg_replace('[^a-zA-Z0-9]', '', $_SERVER['PHP_SELF']);
+			$token = new token;
+			// Pass already-sanitized key - create() will sanitize again but won't change it
+			$api_token = $token->create($token_key);
+			
+			// Add token to $_REQUEST so gateways class validation will find it
+			// The validate() method checks $_REQUEST[$token_name] for the token value
+			$_REQUEST[$api_token['name']] = $api_token['hash'];
+			$_POST[$api_token['name']] = $api_token['hash'];
+			
 			$obj = new gateways;
 			$obj->start($gateways);
 			
@@ -128,6 +151,29 @@ if ($method == 'POST' && !empty($action)) {
 				exit;
 			}
 			
+			// Create event socket connection (matching gateways.php logic)
+			$esl = event_socket::create();
+			if (!$esl || !$esl->is_connected()) {
+				http_response_code(503);
+				echo json_encode(['error' => 'Service Unavailable', 'message' => 'Event Socket connection failed. Cannot stop gateways.']);
+				exit;
+			}
+			
+			// The gateways class stop() method requires a CSRF token
+			// Token validation uses $_SERVER['PHP_SELF'] as the key
+			// IMPORTANT: token->validate() sanitizes with preg_replace('[^a-zA-Z0-9]', '', $key)
+			// But token->create() sanitizes with preg_replace('[^a-zA-Z0-9\-_@.\/]', '', $key) which keeps slashes
+			// To ensure keys match, we must sanitize the same way validate() does BEFORE creating
+			$token_key = preg_replace('[^a-zA-Z0-9]', '', $_SERVER['PHP_SELF']);
+			$token = new token;
+			// Pass already-sanitized key - create() will sanitize again but won't change it
+			$api_token = $token->create($token_key);
+			
+			// Add token to $_REQUEST so gateways class validation will find it
+			// The validate() method checks $_REQUEST[$token_name] for the token value
+			$_REQUEST[$api_token['name']] = $api_token['hash'];
+			$_POST[$api_token['name']] = $api_token['hash'];
+			
 			$obj = new gateways;
 			$obj->stop($gateways);
 			
@@ -144,6 +190,21 @@ if ($method == 'POST' && !empty($action)) {
 				echo json_encode(['error' => 'Access denied', 'message' => 'Insufficient permissions: gateway_add required']);
 				exit;
 			}
+			
+			// The gateways class copy() method requires a CSRF token
+			// Token validation uses $_SERVER['PHP_SELF'] as the key
+			// IMPORTANT: token->validate() sanitizes with preg_replace('[^a-zA-Z0-9]', '', $key)
+			// But token->create() sanitizes with preg_replace('[^a-zA-Z0-9\-_@.\/]', '', $key) which keeps slashes
+			// To ensure keys match, we must sanitize the same way validate() does BEFORE creating
+			$token_key = preg_replace('[^a-zA-Z0-9]', '', $_SERVER['PHP_SELF']);
+			$token = new token;
+			// Pass already-sanitized key - create() will sanitize again but won't change it
+			$api_token = $token->create($token_key);
+			
+			// Add token to $_REQUEST so gateways class validation will find it
+			// The validate() method checks $_REQUEST[$token_name] for the token value
+			$_REQUEST[$api_token['name']] = $api_token['hash'];
+			$_POST[$api_token['name']] = $api_token['hash'];
 			
 			$obj = new gateways;
 			$obj->copy($gateways);
