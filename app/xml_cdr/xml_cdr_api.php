@@ -529,6 +529,30 @@ if ($method == 'GET') {
 	$cdr_records = $database->select($sql, $parameters ?? null, 'all');
 	unset($sql, $parameters);
 	
+	//check if no records found
+	if (empty($cdr_records) || !is_array($cdr_records) || count($cdr_records) == 0) {
+		//return JSON response with no calls found message
+		$response = [
+			'success' => true,
+			'count' => 0,
+			'cdr_records' => [],
+			'message' => 'No call found'
+		];
+		
+		//add metadata
+		$response['metadata'] = [
+			'timestamp' => date('c'),
+			'domain_uuid' => $_SESSION['domain_uuid'] ?? null,
+			'page' => $page,
+			'limit' => $limit,
+			'order_by' => $order_by,
+			'order' => $order
+		];
+		
+		echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+		exit;
+	}
+	
 	//process results - determine status if not set
 	$failed_array = array(
 		"CALL_REJECTED", "CHAN_NOT_IMPLEMENTED", "DESTINATION_OUT_OF_ORDER",
